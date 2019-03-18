@@ -1,18 +1,24 @@
 package com.codepath.apps.restclienttemplate;
 
+import android.content.Intent;
+import android.support.annotation.Nullable;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 
+import com.codepath.apps.restclienttemplate.models.ComposeActivity;
 import com.codepath.apps.restclienttemplate.models.Tweet;
 import com.loopj.android.http.JsonHttpResponseHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.parceler.Parcels;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +27,7 @@ import cz.msebera.android.httpclient.Header;
 
 public class TimelineActivity extends AppCompatActivity {
 
+    public static final int REQUEST_CODE = 20;
     private TwitterClient client;
     private RecyclerView rvTweets;
     private TweetAdapter adapter;
@@ -63,6 +70,36 @@ public class TimelineActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if(item.getItemId()== R.id.compose){
+            //Tapped on compose icon
+            Intent i = new Intent(this, ComposeActivity.class);
+            startActivityForResult(i, REQUEST_CODE);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode == REQUEST_CODE && resultCode == RESULT_OK){
+            //Pull info out of the data intent tweet
+            Tweet tweet = Parcels.unwrap(data.getParcelableExtra("tweet"));
+            // Update Recycler view with tweet
+            tweets.add(0, tweet);
+            adapter.notifyItemInserted(0);
+            rvTweets.smoothScrollToPosition(0);
+        }
+    }
+
     private void populateHomeTimeline() {
         client.getHomeTimeline(new JsonHttpResponseHandler(){
             @Override
@@ -78,7 +115,7 @@ public class TimelineActivity extends AppCompatActivity {
 
                         // Add the tweet into our data source
                         tweetsToAdd.add(tweet);
-                        Log.d("TwitterClient", tweet.user.profileImageUrl);
+                        //Log.d("TwitterClient", tweet.user.profileImageUrl);
                         // Notify adapter
                         adapter.notifyItemInserted(tweets.size() - 1);
                     } catch(JSONException e){
@@ -92,21 +129,16 @@ public class TimelineActivity extends AppCompatActivity {
                 adapter.addTweets(tweetsToAdd);
                 // Now we call setRefreshing(false) to signal refresh has finished
                 swipeContainer.setRefreshing(false);
-
-
-                //super.onSuccess(statusCode, headers, response);
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 Log.e("TwitterClient", responseString);
-                super.onFailure(statusCode, headers, responseString, throwable);
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
                 Log.e("TwitterClient", errorResponse.toString());
-                super.onFailure(statusCode, headers, throwable, errorResponse);
             }
         });
     }
